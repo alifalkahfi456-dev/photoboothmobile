@@ -1,0 +1,278 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>iBooth Pro | Ultimate Glass</title>
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;600;800&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --bg-url: url('https://files.catbox.moe/q3lcv3.jpeg');
+        }
+        * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; margin: 0; padding: 0; }
+        body, html { height: 100vh; width: 100vw; font-family: 'Plus Jakarta Sans', sans-serif; color: white; overflow: hidden; background: #000; }
+
+        /* Background & Overlay */
+        #master-bg { position: fixed; inset: 0; background: var(--bg-url) center/cover no-repeat; z-index: 1; transition: 0.8s ease; }
+        .overlay { position: fixed; inset: 0; backdrop-filter: blur(50px) brightness(0.5); background: rgba(0, 0, 0, 0.4); z-index: 2; }
+
+        .app { position: relative; z-index: 10; height: 100vh; display: flex; flex-direction: column; align-items: center; justify-content: space-between; padding: 40px 20px 60px 20px; }
+
+        /* Viewfinder */
+        .cam-box {
+            width: 100%; max-width: 320px; aspect-ratio: 1/1;
+            background: #000; border-radius: 45px; overflow: hidden;
+            border: 2px solid rgba(255, 255, 255, 0.2); position: relative;
+            box-shadow: 0 0 30px rgba(255, 255, 255, 0.1);
+        }
+        video { width: 100%; height: 100%; object-fit: cover; transition: 0.4s; }
+        .mirror { transform: scaleX(-1); }
+
+        /* Filters */
+        .f-bw { filter: grayscale(1) contrast(1.2); }
+        .f-rona { filter: saturate(1.7) contrast(1.1) brightness(1.1); }
+        .f-retro { filter: sepia(0.4) contrast(0.9) brightness(1.1); }
+
+        /* Navigation Dock */
+        .dock {
+            background: rgba(255, 255, 255, 0.1); backdrop-filter: blur(20px);
+            padding: 8px 12px; border-radius: 30px; display: flex; gap: 8px;
+            border: 1px solid rgba(255, 255, 255, 0.1); margin-bottom: 10px;
+        }
+        .btn-dock {
+            padding: 10px 18px; border-radius: 20px; border: none;
+            background: transparent; color: white; font-size: 0.65rem;
+            font-weight: 800; cursor: pointer;
+        }
+        .btn-dock.active { background: white; color: black; box-shadow: 0 0 15px white; }
+
+        /* Simetris Controls */
+        .controls-row { display: flex; align-items: center; justify-content: center; gap: 35px; width: 100%; }
+        
+        .btn-side {
+            width: 55px; height: 55px; border-radius: 50%; border: none;
+            background: rgba(255, 255, 255, 0.1); color: white; font-size: 1.2rem;
+            display: flex; align-items: center; justify-content: center; cursor: pointer;
+            backdrop-filter: blur(10px);
+        }
+        .btn-side.active { background: #FFD60A; color: black; box-shadow: 0 0 15px #FFD60A; }
+
+        .shutter {
+            width: 85px; height: 85px; border-radius: 50%; border: 4px solid white;
+            display: flex; justify-content: center; align-items: center; cursor: pointer;
+        }
+        .shutter-in { width: 68px; height: 68px; border-radius: 50%; background: white; box-shadow: 0 0 20px rgba(255,255,255,0.4); }
+
+        /* Preview Modal */
+        #modal {
+            position: fixed; inset: 0; z-index: 100; display: none;
+            flex-direction: column; align-items: center; justify-content: center;
+            backdrop-filter: blur(60px) brightness(0.6); padding: 20px;
+        }
+        .frame-card {
+            background: rgba(255, 255, 255, 0.1); border: 1px solid rgba(255, 255, 255, 0.2);
+            padding: 20px; border-radius: 35px; width: 100%; max-width: 320px;
+            display: flex; flex-direction: column; align-items: center; gap: 15px;
+        }
+        .frame-list { display: flex; gap: 10px; overflow-x: auto; width: 100%; padding: 5px; scrollbar-width: none; }
+        .frame-list::-webkit-scrollbar { display: none; }
+        .f-item { min-width: 45px; height: 45px; border-radius: 12px; cursor: pointer; border: 2px solid transparent; flex-shrink: 0; }
+        .f-item.active { border-color: #00fff2; transform: scale(1.1); }
+
+        .preview-area { width: 180px; height: 380px; border-radius: 12px; overflow-y: scroll; scrollbar-width: none; }
+        .preview-area::-webkit-scrollbar { display: none; }
+        .strip-final { padding: 10px; display: flex; flex-direction: column; gap: 8px; }
+        .strip-final img { width: 100%; aspect-ratio: 1/1; object-fit: cover; }
+
+        .btn-main { background: white; color: black; border: none; padding: 18px; border-radius: 40px; font-weight: 800; width: 100%; max-width: 260px; margin-top: 15px; cursor: pointer; }
+
+        #flash-screen { position: fixed; inset: 0; background: white; opacity: 0; z-index: 999; pointer-events: none; transition: 0.1s; }
+        #countdown { position: absolute; inset: 0; display: flex; justify-content: center; align-items: center; font-size: 7rem; font-weight: 800; pointer-events: none; }
+    </style>
+</head>
+<body onclick="playMusic()">
+
+<audio id="bg-music" loop>
+    <source src="https://files.catbox.moe/97poy6.mp3" type="audio/mpeg"> </audio>
+
+<div id="master-bg"></div>
+<div class="overlay"></div>
+<div id="flash-screen"></div>
+
+<div class="app">
+    <div style="font-size: 0.6rem; letter-spacing: 5px; opacity: 0.4; font-weight: 800;">iBOOTH PRO ULTIMATE</div>
+
+    <div class="cam-box">
+        <video id="v" autoplay playsinline class="mirror"></video>
+        <div id="countdown"></div>
+    </div>
+
+    <div class="dock" id="filters">
+        <button class="btn-dock" onclick="setF('f-bw', this)">BW</button>
+        <button class="btn-dock" onclick="setF('f-rona', this)">RONA</button>
+        <button class="btn-dock" onclick="setF('f-retro', this)">RETRO</button>
+    </div>
+
+    <div class="controls-row">
+        <button class="btn-side" onclick="swap()">🔄</button>
+        <div class="shutter" onclick="captureSession()"><div class="shutter-in"></div></div>
+        <button id="f-btn" class="btn-side" onclick="tglFlash()">⚡</button>
+    </div>
+</div>
+
+<div id="modal">
+    <div class="frame-card">
+        <div style="font-size: 0.7rem; font-weight: 800; opacity: 0.6;">SELECT FRAME</div>
+        <div class="frame-list">
+            <div class="f-item active" style="background: white;" onclick="setFrame('white', this)"></div>
+            <div class="f-item" style="background: #1a1a1a;" onclick="setFrame('black', this)"></div>
+            <div class="f-item" style="background: linear-gradient(45deg, #ff9a9e, #fad0c4);" onclick="setFrame('pink', this)"></div>
+            <div class="f-item" style="background: linear-gradient(45deg, #a1c4fd, #c2e9fb);" onclick="setFrame('holo', this)"></div>
+            <div class="f-item" style="background: linear-gradient(45deg, #f6d365, #fda085);" onclick="setFrame('gold', this)"></div>
+        </div>
+        <div class="preview-area">
+            <div class="strip-final" id="stp" style="background: white;"></div>
+        </div>
+    </div>
+    
+    <button class="btn-main" onclick="downloadAll()">SAVE TO GALLERY</button>
+    <label class="btn-main" style="background:rgba(255,255,255,0.1); color:white; border:1px solid rgba(255,255,255,0.2); display:flex; align-items:center; justify-content:center;">
+        CUSTOM BG <input type="file" accept="image/*" style="display:none" onchange="upBG(this)">
+    </label>
+    <button onclick="location.reload()" style="background:none; border:none; color:white; opacity:0.3; font-size:0.6rem; margin-top:10px;">RETAKE SESSION</button>
+</div>
+
+<canvas id="cvs" style="display:none"></canvas>
+
+<script>
+    const v = document.getElementById('v'), count = document.getElementById('countdown'), stp = document.getElementById('stp'), mbg = document.getElementById('master-bg'), music = document.getElementById('bg-music');
+    let photos = [], curF = '', isFlash = false, isFront = true, currentFrame = 'white', stream = null;
+
+    // Fix Swap Kamera & Initial
+    async function initCam() {
+        if(stream) stream.getTracks().forEach(t => t.stop());
+        try {
+            stream = await navigator.mediaDevices.getUserMedia({ 
+                video: { facingMode: isFront ? 'user' : 'environment' } 
+            });
+            v.srcObject = stream;
+            v.className = isFront ? 'mirror ' + curF : curF;
+        } catch (err) { alert("Kamera gak bisa diakses, bro!"); }
+    }
+    initCam();
+
+    function swap() { 
+        isFront = !isFront; 
+        initCam(); 
+    }
+
+    function playMusic() {
+        music.play().catch(() => {}); // Autoplay butuh interaksi user dulu
+    }
+
+    function tglFlash() { 
+        isFlash = !isFlash; 
+        document.getElementById('f-btn').classList.toggle('active'); 
+    }
+
+    function setF(f, b) {
+        if(curF === f) { curF = ''; b.classList.remove('active'); }
+        else {
+            document.querySelectorAll('.btn-dock').forEach(o => o.classList.remove('active'));
+            curF = f; b.classList.add('active');
+        }
+        v.className = isFront ? 'mirror ' + curF : curF;
+    }
+
+    function setFrame(type, b) {
+        document.querySelectorAll('.f-item').forEach(o => o.classList.remove('active'));
+        b.classList.add('active');
+        currentFrame = type;
+        const frames = {
+            white: 'white', black: '#1a1a1a', 
+            pink: 'linear-gradient(45deg, #ff9a9e, #fad0c4)', 
+            holo: 'linear-gradient(45deg, #a1c4fd, #c2e9fb)',
+            gold: 'linear-gradient(45deg, #f6d365, #fda085)'
+        };
+        stp.style.background = frames[type];
+    }
+
+    function upBG(i) {
+        if(i.files[0]) {
+            const r = new FileReader();
+            r.onload = (e) => mbg.style.backgroundImage = `url(${e.target.result})`;
+            r.readAsDataURL(i.files[0]);
+        }
+    }
+
+    async function captureSession() {
+        photos = []; stp.innerHTML = '';
+        const track = stream.getVideoTracks()[0];
+        for(let i=0; i<4; i++) {
+            for(let c=3; c>0; c--) { count.innerText = c; await new Promise(r => setTimeout(r, 800)); }
+            count.innerText = '';
+            
+            if(isFlash) {
+                if(!isFront) try { await track.applyConstraints({advanced:[{torch:true}]}); } catch(e){}
+                document.getElementById('flash-screen').style.opacity = 1;
+                setTimeout(() => document.getElementById('flash-screen').style.opacity = 0, 100);
+            }
+            
+            snap();
+            if(isFlash && !isFront) try { await track.applyConstraints({advanced:[{torch:false}]}); } catch(e){}
+            await new Promise(r => setTimeout(r, 500));
+        }
+        document.getElementById('modal').style.display = 'flex';
+    }
+
+    function snap() {
+        const c = document.getElementById('cvs'), x = c.getContext('2d');
+        c.width = 1000; c.height = 1000;
+        if(curF === 'f-bw') x.filter = 'grayscale(1) contrast(1.2)';
+        if(curF === 'f-rona') x.filter = 'saturate(1.7) contrast(1.1) brightness(1.1)';
+        if(curF === 'f-retro') x.filter = 'sepia(0.4) contrast(0.9) brightness(1.1)';
+        if(isFront) { x.translate(1000, 0); x.scale(-1, 1); }
+        x.drawImage(v, 0, 0, 1000, 1000);
+        const data = c.toDataURL('image/jpeg', 0.9);
+        photos.push(data);
+        const img = document.createElement('img'); img.src = data; stp.appendChild(img);
+    }
+
+    function downloadAll() {
+        const f = document.createElement('canvas'), x = f.getContext('2d');
+        f.width = 1080; f.height = 1920;
+        const bgImg = new Image();
+        bgImg.src = window.getComputedStyle(mbg).backgroundImage.slice(5, -2);
+        bgImg.onload = () => {
+            x.drawImage(bgImg, 0, 0, 1080, 1920);
+            const sw = 460, sh = 1680, sx = (1080-sw)/2, sy = (1920-sh)/2;
+            
+            if(currentFrame === 'white') x.fillStyle = "white";
+            else if(currentFrame === 'black') x.fillStyle = "#1a1a1a";
+            else {
+                const grd = x.createLinearGradient(sx, sy, sx+sw, sy+sh);
+                if(currentFrame === 'pink') { grd.addColorStop(0, '#ff9a9e'); grd.addColorStop(1, '#fad0c4'); }
+                if(currentFrame === 'holo') { grd.addColorStop(0, '#a1c4fd'); grd.addColorStop(1, '#c2e9fb'); }
+                if(currentFrame === 'gold') { grd.addColorStop(0, '#f6d365'); grd.addColorStop(1, '#fda085'); }
+                x.fillStyle = grd;
+            }
+            x.shadowBlur = 40; x.shadowColor = "rgba(0,0,0,0.5)";
+            x.fillRect(sx, sy, sw, sh);
+            x.shadowBlur = 0;
+
+            let loaded = 0;
+            photos.forEach((src, i) => {
+                const img = new Image(); img.src = src;
+                img.onload = () => {
+                    x.drawImage(img, sx+30, sy+40+(i*400), 400, 400);
+                    if(++loaded === 4) {
+                        const a = document.createElement('a'); a.download = 'iboot-pro-final.jpg';
+                        a.href = f.toDataURL('image/jpeg', 0.95); a.click();
+                    }
+                };
+            });
+        };
+    }
+</script>
+</body>
+</html>
